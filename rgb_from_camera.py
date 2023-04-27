@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 import cv2
 import numpy as np
-from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image
 import time
 
 

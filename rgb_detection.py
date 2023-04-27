@@ -2,7 +2,6 @@ import numpy as np
 import cv2 # OpenCV
 import scipy
 import sklearn
-import skimage
 import random as rn
 
 def main():
