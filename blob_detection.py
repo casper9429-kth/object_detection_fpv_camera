@@ -52,7 +52,7 @@ def main2():
 
 def main():
     # Read image using cv2.imread()
-    path = "data/a3_2.png"
+    path = "data/sg_2.png"
     img = cv2.imread(path)
     # gaussian blur
     img = cv2.GaussianBlur(img, (7,7), 8)
