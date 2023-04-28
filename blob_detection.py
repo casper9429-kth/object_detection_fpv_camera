@@ -3,10 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
 from sklearn.mixture import GaussianMixture
+from mpl_toolkits.mplot3d import Axes3D
+
 
 def main2():
     # Read image using cv2.imread()
-    path = "data/bb_1.png"
+    path = "data/a2_1.png"
     img = cv2.imread(path)
     
     # Gaussian blur image aggressively
@@ -48,9 +50,7 @@ def main2():
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-
-
-def main():
+def main3():
     # Read image using cv2.imread()
     path = "data/sg_2.png"
     img = cv2.imread(path)
@@ -77,9 +77,11 @@ def main():
     img[:,:,0] = img_b
     img[:,:,1] = img_g
     img[:,:,2] = img_r
-    
+        
     # take greyscale image and apply thresholding
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+
     # convolution with gaussian filter
     img = cv2.GaussianBlur(img, (7,7), 1)    
 
@@ -183,6 +185,91 @@ def main():
 
 
 
+    
+    pass
+
+
+
+def main():
+    # Read image using cv2.imread()
+    path = "data/bg_2.png"
+    img = cv2.imread(path)
+    # gaussian blur
+    img = cv2.GaussianBlur(img, (7,7), 8)
+
+    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_b = img[:,:,0]
+    img_g = img[:,:,1]
+    img_r = img[:,:,2]
+    img_s = img_hsv[:,:,1]
+    img_v = img_hsv[:,:,2]
+
+    # Calc the derivative in x and y direction for each img_gray, img_b, img_g, img_r, img_s, img_v
+    img_gray = enhance(img_gray)
+    img_b = enhance(img_b)
+    img_g = enhance(img_g)
+    img_r = enhance(img_r)
+    img_s = enhance(img_s)
+    img_v = enhance(img_v)
+
+    img[:,:,0] = img_b
+    img[:,:,1] = img_g
+    img[:,:,2] = img_r
+        
+    # take greyscale image and apply thresholding
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+
+    # convolution with gaussian filter
+    img = cv2.GaussianBlur(img, (7,7), 1)    
+
+    # plot img in 3d plot using matplotlib
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111, projection='3d')
+    #x = np.arange(0, img.shape[1], 1)
+    #y = np.arange(0, img.shape[0], 1)
+    #X, Y = np.meshgrid(x, y)
+    #ax.plot_surface(X, Y, img, cmap='viridis')
+    #plt.show()
+
+    # find edges in image 
+    edges = cv2.Canny(img, 58, 260) # 20, 300)
+
+    # dilate edges to make them thicker
+    #kernel = np.ones((10,10),np.uint8)
+    #edges = cv2.dilate(edges,kernel,iterations = 1)
+
+    # perform closing 
+    kernel = np.ones((5,5),np.uint8)
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+
+
+    # Close open edges
+    # Define kernel for morphological operations
+    #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20, 20))
+
+    # Perform closing
+    #edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+
+
+    # Floodfill possible holes in the image
+    #cv2.floodFill(edges, None, (0,0), 255)
+    
+
+    # show contours
+    #cv2.drawContours(img, contours, -1, (0, 255, 0), 3)
+    #cv2.imshow("contours",img)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
+
+
+
+    # add edges to original image
+    cv2.imshow("edges",edges)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     
     pass
 
