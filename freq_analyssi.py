@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 import sklearn
 from sklearn.mixture import GaussianMixture
 from mpl_toolkits.mplot3d import Axes3D
-
-
-
+import rembg
 
 def main():
     # find path to all images in folder
@@ -15,14 +13,104 @@ def main():
     file_paths = [folder_path + file_path for file_path in file_paths]
     # load all images in folder 
     images = [cv2.imread(file_path) for file_path in file_paths]
-    # Find ellipses for all images
     for image in images:
-        ellipse = find_object(image)
-        cv2.ellipse(image, ellipse, (0,255,0), 2)    
-        # plot new edges
+        # remove background from image
+        img_without_background = rembg.remove(image)
+        # Make img_without_background greyscale
+        grey = cv2.cvtColor(img_without_background, cv2.COLOR_BGR2GRAY)
+        # make grey image binary
+        #grey = cv2.adaptiveThreshold(grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+        grey[grey > 0] = 255
+        
+        # Find contours in image
+        contours, hierarchy = cv2.findContours(grey, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # sort contours by area
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+        contour = contours[0]
+        
+        # Fit ellipse,circle,rectangle to contour
+        square = cv2.minAreaRect(contour)
+        
+        
+        
+        cv2.drawContours(image, [np.int0(cv2.boxPoints(square))], 0, (0,255,0), 2)        
+        
+        
+        
+        # Draw contours on original image
+        cv2.drawContours(image, contours, -1, (0,255,0), 3)
+        
+        # Find ellipses for all images
         cv2.imshow("new edges", image)
         cv2.waitKey(0)
-    cv2.destroyAllWindows()
+
+def main1():
+    # find path to all images in folder
+    folder_path = "data/"
+    file_paths = find_files(folder_path)
+    file_paths = [folder_path + file_path for file_path in file_paths]
+    # load all images in folder 
+    images = [cv2.imread(file_path) for file_path in file_paths]
+    # Find ellipses for all images
+    images = np.array(images)
+    for image in images:
+        new_image = image.copy()
+        for i in range(3):
+
+            # turn image into greyscale
+            grey = image[:,:,i]#cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            grey = enhance(grey)
+            # take fft of image
+            fft = np.fft.fft2(grey)
+            # Remove high frequencies with a Gaussian filter
+            fft = np.fft.fftshift(fft)
+            # remove all elements in fft at a distance greater than 10 from the center
+            rows, cols = grey.shape
+            crow,ccol = int(rows/2) , int(cols/2)
+            # create a circle mask of size of fft
+            # Create a gaussian mask 
+            gaussian_mask = np.zeros((rows, cols), np.float32)
+            sigma_i = 200
+            sigma_j = sigma_i*(cols/rows)
+            for y in range(rows):
+                for x in range(cols):
+                    distance = np.sqrt((y - crow)**2 + (x - ccol)**2)
+                    gaussian_mask[y, x] = np.exp(-(  ((y - crow)**2)/ (2 * (sigma_i)) + ((x - ccol)**2)/ (2 * (sigma_j)) ))
+
+            mask = np.zeros((rows,cols),np.uint8)
+            mask = cv2.circle(mask,(ccol,crow),20,1,thickness=-1)*1
+
+            fft = fft * gaussian_mask
+
+                    
+            # Plot the image and spectrum
+            #plt.subplot(121),plt.imshow(grey, cmap = 'gray')
+            #plt.title('Input Image'), plt.xticks([]), plt.yticks([])
+            #plt.subplot(122),plt.imshow(np.log(1+np.abs(fft)), cmap = 'gray')
+            #plt.title('Magnitude Spectrum'), plt.xticks([]), plt.yticks([])
+            #plt.show()
+
+            # take inverse fft
+            ifft = np.fft.ifft2(fft)
+            ifft = np.abs(ifft)
+            # plot ifft
+            #plt.subplot(121),plt.imshow(grey, cmap = 'gray')
+            #plt.title('Input Image'), plt.xticks([]), plt.yticks([])
+            #plt.subplot(122),plt.imshow(ifft, cmap = 'gray')
+            #plt.title('Magnitude Spectrum'), plt.xticks([]), plt.yticks([])
+            #plt.show()
+            # addaptive thresholding on ifft
+            #thresh = cv2.adaptiveThreshold(ifft.astype(np.uint8), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+            new_image[:,:,i] = ifft.astype(np.uint8)
+
+
+        #grey = cv2.cvtColor(new_image, cv2.COLOR_BGR2GRAY)
+        # adaptive thresholding
+        #thresh = cv2.adaptiveThreshold(grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        cv2.imshow("thresh", new_image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
     
     pass
 
