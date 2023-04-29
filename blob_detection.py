@@ -106,8 +106,9 @@ def find_object(image):
             cv2.ellipse(new_img, ellipsis, (0,255,0), 2)
         circle = cv2.minEnclosingCircle(contour)
         cv2.circle(new_img, (int(circle[0][0]), int(circle[0][1])), int(circle[1]), (0,255,0), 2)
-        #rect  = cv2.minAreaRect(contour)
-        #cv2.rectangle(new_img, (int(rect[0][0]), int(rect[0][1])), (int(rect[1][0]), int(rect[1][1])), (0,255,0), 2)
+        square = cv2.minAreaRect(contour)        
+        cv2.drawContours(new_img, [np.int0(cv2.boxPoints(square))], 0, (0,255,0), 2)  
+
         
     
     new_img = 255-new_img
