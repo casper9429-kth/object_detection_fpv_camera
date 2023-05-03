@@ -3,220 +3,57 @@ import cv2 # OpenCV
 import scipy
 import sklearn
 import random as rn
+import rembg
 
 def main():
 
-    #frame = take_picture("/dev/video2",debug=False)
-    #frame = frame[:380, :]
-    # save frame as image file
-    file_name = "data/rgb_image.png"
-
-    #ellipse = rgb_dectection_img(frame,debug=True)
-    
-
-
-
-
-
-
-
-
-def rgb_dectection2(file_path,debug=False):
-    # Load the image
-    image = cv2.imread(filename=file_path) # B G R
-
-    # Gaussian blur the image with a kernel size of 5 and a standard deviation of 10
-    image = cv2.GaussianBlur(src=image, ksize=(5, 5), sigmaX=10, sigmaY=10)
-
-    # Scale image so first dimension is 400 pixels
-    scale = 400 / image.shape[0]
-    image = cv2.resize(src=image, dsize=(0, 0), fx=scale, fy=scale)
-
-    # Downsample the image by a factor of 10
-    #image = cv2.resize(src=image, dsize=(0, 0), fx=0.1, fy=0.1)
-
-    # 
+    frame = take_picture("/dev/video0",debug=False)
+    # Cut out unnecessary parts of the image
+    frame = frame[:380, :]
+    # Find object
+    ellipse = find_object_morph(frame)
+    #ellipse = find_object_derivatives(frame)
+    #ellipse = find_object_rembg(frame)
+    # Draw ellipse
+    cv2.ellipse(frame, ellipse, (0,255,0), 2)
+    # Show image
+    cv2.imshow("new edges", frame)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
-
-
-
-
-def rgb_dectection_img(image,debug=False):
-
-    # Transform image to float32
-    image = image.astype(np.uint8)
-
-    # Gaussian blur the image with a kernel size of 5 and a standard deviation of 10
-    image = cv2.GaussianBlur(src=image, ksize=(5, 5), sigmaX=10, sigmaY=10)
-
-    # Scale image so first dimension is 400 pixels
-    scale = 400 / image.shape[0]
-    image = cv2.resize(src=image, dsize=(0, 0), fx=scale, fy=scale)
-
-    # Downsample the image by a factor of 10
-    #image = cv2.resize(src=image, dsize=(0, 0), fx=0.1, fy=0.1)
-
-
-
-
-    # Peform canny edge detection for each channel of the image
-    edges_b = cv2.Canny(image=image[:, :, 0], threshold1=80, threshold2=300)
-    edges_g = cv2.Canny(image=image[:, :, 1], threshold1=80, threshold2=300)
-    edges_r = cv2.Canny(image=image[:, :, 2], threshold1=80, threshold2=300)
-    edges_gray = cv2.Canny(image=cv2.cvtColor(src=image, code=cv2.COLOR_BGR2GRAY), threshold1=120, threshold2=170)
-
-    # Plot the edges for each channel of the image in differenct colors
-    # draw edges
-
-
-    # Find contours
-    #contours_b, hierarchy_b = cv2.findContours(image=edges_b, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-    #contours_g, hierarchy_g = cv2.findContours(image=edges_g, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-    #contours_r, hierarchy_r = cv2.findContours(image=edges_r, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-    #contours_gray, hierarchy_gray = cv2.findContours(image=edges_gray, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-
-    contours_b, hierarchy_b = cv2.findContours(image=edges_b,mode=cv2.RETR_EXTERNAL,method=cv2.CHAIN_APPROX_NONE)
-    contours_g, hierarchy_g = cv2.findContours(image=edges_g,mode=cv2.RETR_EXTERNAL,method=cv2.CHAIN_APPROX_NONE)
-    contours_r, hierarchy_r = cv2.findContours(image=edges_r,mode=cv2.RETR_EXTERNAL,method=cv2.CHAIN_APPROX_NONE)
-    contours_gray, hierarchy_gray = cv2.findContours(image=edges_gray,mode=cv2.RETR_EXTERNAL,method=cv2.CHAIN_APPROX_NONE)
-
-
-    # Merge all contours into one contours, and draw it
-    # Merge all contours
-
-    contours = contours_b + contours_g + contours_r + contours_gray
-
-    # Transform the boundaries of the contours to one contour
-            
-    # Assume 'contours' is the list of contours obtained from your previous code
-
-    # Create a blank image to draw the contours
-    blank_image = np.zeros_like(image)
-
-    # Draw all the contours on the blank image
-    for contour in contours:
-        cv2.drawContours(image=blank_image, contours=[contour], contourIdx=-1, color=(255, 255, 255), thickness=40)
-
-    # Plot the image with all the contours drawn on it
-    #if debug:
-    #    cv2.imshow("All Contours", blank_image)
-    #    cv2.waitKey(0)
-    #    cv2.destroyAllWindows()
-
-
-
-    # Find the outer contour of the combined contours
-    contour_of_contours, _ = cv2.findContours(image=cv2.cvtColor(src=blank_image, code=cv2.COLOR_BGR2GRAY), mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
-
-    
-
-    # Fit ellipses to the outer contour of the combined contours
-    if len(contour_of_contours) == 0:
-        return None
-
-    # sort contours by area
-    contour_of_contours = sorted(contour_of_contours, key=cv2.contourArea, reverse=True)
-
-    ellipsis = cv2.fitEllipse(contour_of_contours[0])
-    
-    if debug:
-    
-
-        ## Draw the contour of the contours on the original image (optional)
-        result_image = image.copy()
-        cv2.drawContours(image=result_image, contours=contour_of_contours, contourIdx=-1, color=(0, 255, 0), thickness=3)
-        cv2.ellipse(result_image, ellipsis, (0, 0, 255), 2)
-
-        # Display the result image with the contour of the contours (optional)
-        cv2.imshow('Result Image with Contour of Contours', result_image)
+def test():
+    # find path to all images in folder
+    folder_path = "data/"
+    file_paths = find_files(folder_path)
+    file_paths = [folder_path + file_path for file_path in file_paths]
+    # load all images in folder 
+    images = [cv2.imread(file_path) for file_path in file_paths]
+    # Find ellipses for all images
+    for image in images:
+        ellipse_morph = find_object_morph(image)
+        ellipse_derivatives = find_object_derivatives(image)
+        cv2.ellipse(image, ellipse_morph, (0,0,0), 2)    
+        cv2.ellipse(image, ellipse_derivatives, (255,0,0), 2)
+        # plot new edges
+        cv2.imshow("new edges", image)
         cv2.waitKey(0)
-        cv2.destroyAllWindows()
+    cv2.destroyAllWindows()
     
+    pass
+
+def find_files(folder_path):
+    """
+    This function finds all files in a given folder path
+    """
+    import os
+    files = []
+    for file in os.listdir(folder_path):
+        if file.endswith(".png"):
+            files.append(file)
+    return files
 
 
-    return ellipsis
-
-
-
-def rgb_dectection(file_path,debug=False):
-    # Load the image
-    image = cv2.imread(filename=file_path) # B G R
-
-    # Gaussian blur the image with a kernel size of 5 and a standard deviation of 10
-    image = cv2.GaussianBlur(src=image, ksize=(5, 5), sigmaX=10, sigmaY=10)
-
-    # Scale image so first dimension is 400 pixels
-    scale = 400 / image.shape[0]
-    image = cv2.resize(src=image, dsize=(0, 0), fx=scale, fy=scale)
-
-    # Downsample the image by a factor of 10
-    #image = cv2.resize(src=image, dsize=(0, 0), fx=0.1, fy=0.1)
-
-
-
-
-    # Peform canny edge detection for each channel of the image
-    edges_b = cv2.Canny(image=image[:, :, 0], threshold1=200, threshold2=700)
-    edges_g = cv2.Canny(image=image[:, :, 1], threshold1=200, threshold2=700)
-    edges_r = cv2.Canny(image=image[:, :, 2], threshold1=200, threshold2=700)
-    edges_gray = cv2.Canny(image=cv2.cvtColor(src=image, code=cv2.COLOR_BGR2GRAY), threshold1=200, threshold2=700)
-
-    # Find contours
-    #contours_b, hierarchy_b = cv2.findContours(image=edges_b, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-    #contours_g, hierarchy_g = cv2.findContours(image=edges_g, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-    #contours_r, hierarchy_r = cv2.findContours(image=edges_r, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-    #contours_gray, hierarchy_gray = cv2.findContours(image=edges_gray, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-
-    contours_b, hierarchy_b = cv2.findContours(image=edges_b,mode=cv2.RETR_EXTERNAL,method=cv2.CHAIN_APPROX_NONE)
-    contours_g, hierarchy_g = cv2.findContours(image=edges_g,mode=cv2.RETR_EXTERNAL,method=cv2.CHAIN_APPROX_NONE)
-    contours_r, hierarchy_r = cv2.findContours(image=edges_r,mode=cv2.RETR_EXTERNAL,method=cv2.CHAIN_APPROX_NONE)
-    contours_gray, hierarchy_gray = cv2.findContours(image=edges_gray,mode=cv2.RETR_EXTERNAL,method=cv2.CHAIN_APPROX_NONE)
-
-
-    # Merge all contours into one contours, and draw it
-    # Merge all contours
-
-    contours = contours_b + contours_g + contours_r + contours_gray
-
-    # Transform the boundaries of the contours to one contour
-            
-    # Assume 'contours' is the list of contours obtained from your previous code
-
-    # Create a blank image to draw the contours
-    blank_image = np.zeros_like(image)
-
-    # Draw all the contours on the blank image
-    for contour in contours:
-        cv2.drawContours(image=blank_image, contours=[contour], contourIdx=-1, color=(255, 255, 255), thickness=10)
-
-
-
-    # Find the outer contour of the combined contours
-    contour_of_contours, _ = cv2.findContours(image=cv2.cvtColor(src=blank_image, code=cv2.COLOR_BGR2GRAY), mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
-
-    # Fit ellipses to the outer contour of the combined contours
-    if len(contour_of_contours) > 0:
-        return None
-
-    ellipsis = cv2.fitEllipse(contour_of_contours[0])
-    
-    if debug:
-        cv2.ellipse(image, ellipsis, (0, 0, 255), 2)
-
-
-        ## Draw the contour of the contours on the original image (optional)
-        result_image = image.copy()
-        cv2.drawContours(image=result_image, contours=contour_of_contours, contourIdx=-1, color=(0, 255, 0), thickness=3)
-
-        # Display the result image with the contour of the contours (optional)
-        cv2.imshow('Result Image with Contour of Contours', result_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-    
-
-
-    return ellipsis
 
 # Function to take a picture from the camera
 def take_picture(camera_device="/dev/video0",debug=False):
@@ -236,98 +73,250 @@ def take_picture(camera_device="/dev/video0",debug=False):
         cv2.imwrite("image.png", frame)
     return frame
 
-
-
-def kmeans_segm(image, K, L, seed = 42):
+def find_object_morph(image):
     """
-    Implement a function that uses K-means to find cluster 'centers'
-    and a 'segmentation' with an index per pixel indicating with 
-    cluster it is associated to.
+    Find object using morphological operations
+    """
+    img = image.copy()
+    # Greyscale image
+    grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Threshold image using adaptive thresholding
+    #thresh = cv2.adaptiveThreshold(grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    thresh = cv2.adaptiveThreshold(grey, 255, cv2.BORDER_REPLICATE, cv2.THRESH_BINARY, 69, 5)
+    
+    # Morphological operation
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13,13))
+    blob = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15,15))
+    blob = cv2.morphologyEx(blob, cv2.MORPH_CLOSE, kernel)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+    blob = cv2.morphologyEx(blob, cv2.MORPH_DILATE, kernel)
 
-    Input arguments:
-        image - the RGB input image 
-        K - number of clusters
-        L - number of iterations
-        seed - random seed
-    Output:
-        segmentation: an integer image with cluster indices
-        centers: an array with K cluster mean colors
-    """ 
-    print("K: " + str(K))
+    # Find contours in image 
+    contours, hierarchy = cv2.findContours(blob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     
-    #settings
-    smart_random = True
-    
-    
-    # Set random seed
-    rn.seed(seed)
-        
-    # Random initialization of K centers   
-    if smart_random == True:
-        k_centers = find_random_color_from_img(image,K,seed)
-        k_centers = np.array(k_centers.astype('uint8'))
-        
-    else:
-        max_val = 255
-        k_centers = np.array([[rn.random()*max_val,rn.random()*max_val,rn.random()*max_val] for i in range(K)  ])
-        k_centers = np.array(k_centers.astype('uint8'))
+    # sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+    # Fit ellipse to largest contour 
+    #ellipse = cv2.fitEllipse(contours[0])
+    #return ellipse
 
 
-    shape = np.shape(image)
-    img_extend = np.ones([shape[0],shape[1],len(k_centers),3])
-    img_extend = np.einsum('ijk,ijnk->ijnk',image,img_extend)
+    new_img = np.ones_like(grey)*255
+    
+    for contour in contours:
+        # draw contour on image
+        cv2.drawContours(new_img, [contour], 0, (0,255,0), 2)
+        # fit min enclosing ellipse to contour
+        ellipsis = cv2.fitEllipse(contour)
+        #check area of ellipse
+        are_ellipse = np.pi*ellipsis[1][0]*ellipsis[1][1]
+        if are_ellipse < img.shape[0]*img.shape[1]:
+            cv2.ellipse(new_img, ellipsis, (0,255,0), 2)
+        #circle = cv2.minEnclosingCircle(contour)
+        #cv2.circle(new_img, (int(circle[0][0]), int(circle[0][1])), int(circle[1]), (0,255,0), 2)
+        #square = cv2.minAreaRect(contour)        
+        #box = cv2.boxPoints(square)
         
+    
+    new_img = 255-new_img
+    # Inflate new image 
+    kernel = np.ones((3,3),np.uint8)
+    new_img = cv2.dilate(new_img,kernel,iterations = 1)
+    
+    # Find contours in new image
+    contours, hierarchy = cv2.findContours(new_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    
+    # Remove contours with area bigger than half of the image
+    contours = [contour for contour in contours if cv2.contourArea(contour) < img.shape[0]*img.shape[1]/3]
+        
+    # Sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
-    # Iter L times    
-    for l in range(L):
-        
-        print("iter " + str(l) + " out of " + str(L) )
+    # draw contours on image
+    #cv2.drawContours(img, contours, -1, (0,255,0), 2)
 
-        # subtract k_centers from img _extended
-        dist_diff = img_extend[:,:] - k_centers
-        
-        # now calc length 
-        dist = np.einsum('ijkv,ijkv->ijk',dist_diff,dist_diff)
-        
-        ## Assign each pixel to cluster centers with lowest distance
-        # (ijk)                  ij pixel belongs to cluster k
-        pixel_cluster_map  = np.argmin(dist, axis=2)#np.argmin(a, axis=None, out=None, *, keepdims=<no value>)
-        
-        ## Recompute all cluster centers by taking mean of the pixels assigned to each cluster
-        # i cluster, x,y for pixel in org img
-        
-        
-        
-        #image_k = image[pixel_cluster_map==]        
-        #index_list_each_cluster = [np.argwhere(pixel_cluster_map == i) for i in range(K)]    
-        for c in range(K):
-            color_sum = image[pixel_cluster_map==c]
-            k_centers[c] = np.einsum('ij->j',color_sum)/color_sum.shape[0]
+    # Get the largest contour
+    largest_contour = contours[0]
+    
+    # Fit ellipse to largest contour
+    ellipsis = cv2.fitEllipse(largest_contour)
+    ##draw ellipse on image
+    #cv2.ellipse(img, ellipsis, (0,255,0), 2)    
+    ## Fit rectangle to largest contour
+    #
+    #
+    ## plot new edges
+    #cv2.imshow("new edges", new_img)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
-        
-    
-    
-    
-    centers = k_centers
-    segmentation = pixel_cluster_map
-    
-    return segmentation, centers
+    return ellipsis
 
 
-def find_random_color_from_img(image,K,seed):
-    """finds K unique colors in an image"""
-    rn.seed(seed)
+
+def find_object_rembg(image):
+    """
+    Finds object using rembg library, returns ellipse fitted to object
+    """
+    # remove background from image
+    img_without_background = rembg.remove(image)
+    # Make img_without_background greyscale
+    grey = cv2.cvtColor(img_without_background, cv2.COLOR_BGR2GRAY)
+    # make grey image binary
+    #grey = cv2.adaptiveThreshold(grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+    grey[grey > 0] = 255
     
-    # Create color mat for image
-    image_int = np.array(image)
-    image_flat = np.reshape(image_int, (-1, 3)).astype(np.float64)
+    # Find contours in image
+    contours, hierarchy = cv2.findContours(grey, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    contour = contours[0]
     
-    rgb_unique= list(set(tuple(rgb) for rgb in image_flat))
+    # Fit ellipse,circle,rectangle to contour
+    ellipsis = cv2.fitEllipse(contour)
+
+    return ellipsis
+
+
+def find_object_derivatives(image):
+    """
+    Finds object using derivatives
+    """
+    # Read image using cv2.imread()
+    #path = "data/sr_2.png"
+    img = image.copy()
+    # gaussian blur
+    img = cv2.GaussianBlur(img, (7,7), 8)
+
+    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_b = img[:,:,0]
+    img_g = img[:,:,1]
+    img_r = img[:,:,2]
+    img_s = img_hsv[:,:,1]
+    img_v = img_hsv[:,:,2]
+
+    # Calc the derivative in x and y direction for each img_gray, img_b, img_g, img_r, img_s, img_v
+    img_gray = enhance(img_gray)
+    img_b = enhance(img_b)
+    img_g = enhance(img_g)
+    img_r = enhance(img_r)
+    img_s = enhance(img_s)
+    img_v = enhance(img_v)
+
+    img[:,:,0] = img_b
+    img[:,:,1] = img_g
+    img[:,:,2] = img_r
+        
+    # take greyscale image and apply thresholding
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
-    ret_var = np.array([rgb_unique[rn.randrange(0,len(rgb_unique))] for i in range(K)])
-    return ret_var
+
+    # convolution with gaussian filter
+    img = cv2.GaussianBlur(img, (7,7), 1)    
+
+    # find edges in image 
+    edges = cv2.Canny(img, 58, 280) # 20, 300)
+
+    # dilate edges to make them thicker
+    #kernel = np.ones((10,10),np.uint8)
+    #edges = cv2.dilate(edges,kernel,iterations = 1)
+
+    # perform closing 
+    kernel = np.ones((3,3),np.uint8)
+    #edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel)
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+
+    # find contours
+    contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    
+    new_img = np.ones_like(img)*255
+    
+    # sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    
+    for contour in contours:
+        # draw contour on image
+        cv2.drawContours(img, [contour], 0, (0,255,0), 2)
+        # fit min enclosing ellipse to contour
+        ellipsis = cv2.fitEllipse(contour)
+        #check area of ellipse
+        are_ellipse = np.pi*ellipsis[1][0]*ellipsis[1][1]
+        if are_ellipse < img.shape[0]*img.shape[1]/3:
+            cv2.ellipse(new_img, ellipsis, (0,255,0), 2)
+        circle = cv2.minEnclosingCircle(contour)
+        cv2.circle(new_img, (int(circle[0][0]), int(circle[0][1])), int(circle[1]), (0,255,0), 2)
+        #square = cv2.minAreaRect(contour)        
+        #cv2.drawContours(new_img, [np.int0(cv2.boxPoints(square))], 0, (0,255,0), 2)  
+
+        
+    
+    new_img = 255-new_img
+    # Inflate new image 
+    kernel = np.ones((3,3),np.uint8)
+    new_img = cv2.dilate(new_img,kernel,iterations = 1)
+    
+    
+    # Find contours in new image
+    contours, hierarchy = cv2.findContours(new_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    
+    # Remove contours with area bigger than half of the image
+    contours = [contour for contour in contours if cv2.contourArea(contour) < img.shape[0]*img.shape[1]/3]
+        
+    # Sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+    # draw contours on image
+    #cv2.drawContours(img, contours, -1, (0,255,0), 2)
+
+    # Get the largest contour
+    largest_contour = contours[0]
+    
+    # Fit ellipse to largest contour
+    ellipsis = cv2.fitEllipse(largest_contour)
+    ##draw ellipse on image
+    #cv2.ellipse(img, ellipsis, (0,255,0), 2)    
+    ## Fit rectangle to largest contour
+    #
+    #
+    ## plot new edges
+    #cv2.imshow("new edges", new_img)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
+
+    return ellipsis
+
+def enhance(img):
+    """
+    This function enhances the image by calculating the gradient of the image and adding it to the original image with smart scaling
+    """
+    # Convert image to grayscale
+    gray = img.copy()
+
+    # Apply the Sobel operator in both the x and y directions
+    sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+    sobel_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+
+    # Calculate the magnitude of the gradients
+    magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
+
+    # Normalize the magnitude to the range [0, 255]
+    magnitude = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
+
+    # Add the magnitude to the original image with smart scaling
+    enhanced_img = cv2.addWeighted(img, 1, magnitude, 1, 0)
+
+    return enhanced_img
+
+
 
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    test()

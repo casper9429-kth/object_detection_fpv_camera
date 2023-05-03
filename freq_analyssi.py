@@ -45,6 +45,28 @@ def main():
         cv2.imshow("new edges", image)
         cv2.waitKey(0)
 
+def find_ellipse_rembg(image):
+    # remove background from image
+    img_without_background = rembg.remove(image)
+    # Make img_without_background greyscale
+    grey = cv2.cvtColor(img_without_background, cv2.COLOR_BGR2GRAY)
+    # make grey image binary
+    #grey = cv2.adaptiveThreshold(grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+    grey[grey > 0] = 255
+    
+    # Find contours in image
+    contours, hierarchy = cv2.findContours(grey, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    contour = contours[0]
+    
+    # Fit ellipse,circle,rectangle to contour
+    ellipsis = cv2.fitEllipse(contour)
+
+    return ellipsis
+
+
 def find_files(folder_path):
     """
     This function finds all files in a given folder path
