@@ -1,12 +1,9 @@
 import numpy as np
 import cv2 # OpenCV
-import scipy
-import sklearn
 import random as rn
 import rembg
 
 def main():
-
     frame = take_picture("/dev/video0",debug=False)
     # Cut out unnecessary parts of the image
     frame = frame[:380, :]
@@ -33,8 +30,10 @@ def test():
     for image in images:
         ellipse_morph = find_object_morph(image)
         ellipse_derivatives = find_object_derivatives(image)
-        cv2.ellipse(image, ellipse_morph, (0,0,0), 2)    
+        ellipsis_rembg = find_object_rembg(image)
+        cv2.ellipse(image, ellipse_morph, (0,0,255), 2)    
         cv2.ellipse(image, ellipse_derivatives, (255,0,0), 2)
+        cv2.ellipse(image, ellipsis_rembg, (0,255,0), 2)
         # plot new edges
         cv2.imshow("new edges", image)
         cv2.waitKey(0)
@@ -56,23 +55,6 @@ def find_files(folder_path):
 
 
 # Function to take a picture from the camera
-def take_picture(camera_device="/dev/video0",debug=False):
-    """
-    Take picture from the camera
-    To determine the camera device, run the following command in the terminal:
-    v4l2-ctl --list-devices
-    This command will list all the devices connected to the computer.
-    For laptop, the camera device is usually /dev/video0
-    For the NUC, the arm camera device is usually /dev/video6
-    Will return the image as a numpy array in BGR format uint8
-    """
-    # v4l2-ctl --list-devices
-    cap = cv2.VideoCapture(camera_device)
-    ret, frame = cap.read()
-    if debug:
-        cv2.imwrite("image.png", frame)
-    return frame
-
 def find_object_morph(image):
     """
     Find object using morphological operations
@@ -278,15 +260,6 @@ def find_object_derivatives(image):
     
     # Fit ellipse to largest contour
     ellipsis = cv2.fitEllipse(largest_contour)
-    ##draw ellipse on image
-    #cv2.ellipse(img, ellipsis, (0,255,0), 2)    
-    ## Fit rectangle to largest contour
-    #
-    #
-    ## plot new edges
-    #cv2.imshow("new edges", new_img)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
 
     return ellipsis
 
@@ -313,6 +286,23 @@ def enhance(img):
 
     return enhanced_img
 
+
+def take_picture(camera_device="/dev/video0",debug=False):
+    """
+    Take picture from the camera
+    To determine the camera device, run the following command in the terminal:
+    v4l2-ctl --list-devices
+    This command will list all the devices connected to the computer.
+    For laptop, the camera device is usually /dev/video0
+    For the NUC, the arm camera device is usually /dev/video6
+    Will return the image as a numpy array in BGR format uint8
+    """
+    # v4l2-ctl --list-devices
+    cap = cv2.VideoCapture(camera_device)
+    ret, frame = cap.read()
+    if debug:
+        cv2.imwrite("image.png", frame)
+    return frame
 
 
 
