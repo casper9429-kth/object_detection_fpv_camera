@@ -18,6 +18,34 @@ def main():
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+def test_nitristic():
+    # Camera matrix
+    camera_matrix = np.array([[517.03632655, 0.0, 312.03052029], [0.0, 516.70216219, 252.01727667], [0.0, 0.0, 1.0]])
+
+    # Distortion coefficients
+    dist_coeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+
+    # find path to all images in folder
+    folder_path = "data/"
+    file_paths = find_files(folder_path)
+    file_paths = [folder_path + file_path for file_path in file_paths]
+    # load all images in folder 
+    images = [cv2.imread(file_path) for file_path in file_paths]
+    for image in images:
+
+        h,  w = image.shape[:2]
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, (w,h), 1, (w,h))
+        dst = cv2.undistort(image, camera_matrix, dist_coeffs, None, newcameramtx)
+        # crop the image
+        x, y, w, h = roi
+        dst = dst[y:y+h, x:x+w]
+        cv2.imshow("image", image)
+        cv2.imshow("undistorted image", dst)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        
+
+
 
 def test():
     # find path to all images in folder
@@ -309,4 +337,4 @@ def take_picture(camera_device="/dev/video0",debug=False):
 
 if __name__ == '__main__':
     #main()
-    test()
+    test_nitristic()
