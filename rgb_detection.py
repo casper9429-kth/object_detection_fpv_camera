@@ -1,7 +1,6 @@
 import numpy as np
 import cv2 # OpenCV
 import random as rn
-import rembg
 
 def main():
     frame = take_picture("/dev/video0",debug=False)
@@ -184,9 +183,9 @@ def find_object_morph_pre_filter(image):
     mask = cv2.inRange(hsv, lower, upper)
     mask = cv2.bitwise_not(mask)
     # show mask
-    cv2.imshow("first", mask)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    #cv2.imshow("first", mask)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
 
 
@@ -207,9 +206,9 @@ def find_object_morph_pre_filter(image):
     # 
 
     # show mask
-    cv2.imshow("mask", mask)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    #cv2.imshow("mask", mask)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
     # dilate mask 
     kernel = np.ones((20,20),np.uint8)
@@ -222,9 +221,9 @@ def find_object_morph_pre_filter(image):
 
 
     # show mask
-    cv2.imshow("mask", mask)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    #cv2.imshow("mask", mask)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
     
 
@@ -236,133 +235,45 @@ def find_object_morph_pre_filter(image):
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
     
     # Transform contours to polygons
-    contours = [cv2.approxPolyDP(contour, 0.01*cv2.arcLength(contour, True), True) for contour in contours]
+    #contours = [cv2.approxPolyDP(contour, 0.01*cv2.arcLength(contour, True), True) for contour in contours]
     
     # Get convex hull of contours
-    contours = [cv2.convexHull(contour) for contour in contours]
+    #contours = [cv2.convexHull(contour) for contour in contours]
 
     # convex hulls to polygons
     polygons = [(contour.reshape(-1,2)) for contour in contours]
     # transform to list of tuples
     polygons = [tuple(map(tuple, polygon)) for polygon in polygons]
+    
+    
+    
     master_polygon = find_boundary_polygon(polygons)
     # visualize master polygon on image
-    cv2.polylines(image, [np.array(master_polygon)], True, (0,255,0), 2)
-    cv2.imshow("mask", image)
-    cv2.waitKey(0)
-
-    # Create master polygon that contains all convex hulls
-    #master_polygon = np.concatenate(contours)
-    
-    # Create mask from convex hulls
-    mask = np.zeros_like(image)
+    mask = np.zeros_like(image)    
+    cv2.polylines(mask, [np.array(master_polygon)], True, (0,255,0), 2)
     cv2.imshow("mask", mask)
     cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    mask = mask[:,:,1]
 
-    # fit ellipse to all contours and draw them in new image
-    new_img = np.ones_like(mask)*255
-    for contour in contours:
-        # fit ellipse to contour
-        ellipsis = cv2.fitEllipse(contour)
-        # draw ellipse on image
-        cv2.ellipse(new_img, ellipsis, (0,255,0), 2)
-    
-    # show new image
-    cv2.imshow("new", new_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
- 
- 
-    largest_contour = contours[0]
-    # Fit ellipse to largest contour
-    ellipsis = cv2.fitEllipse(largest_contour)
-    return ellipsis
-    # save mask
-    img = image.copy()
-    #grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
-    #grey = cv2.bitwise_and(grey, grey, mask=mask)
-    grey = mask
+    # dilate mask 
+    kernel = np.ones((5,5),np.uint8)
+    mask = cv2.dilate(mask,kernel,iterations = 1)
 
-    # Gaussian blur
-    grey = cv2.GaussianBlur(grey, (3,3), 0)
-    # Threshold image using adaptive thresholding
-    #thresh = cv2.adaptiveThreshold(grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-    thresh = cv2.adaptiveThreshold(grey, 255, cv2.BORDER_REPLICATE, cv2.THRESH_BINARY, 69, 5)
-    
-    # Morphological operation
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13,13))
-    blob = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15,15))
-    blob = cv2.morphologyEx(blob, cv2.MORPH_CLOSE, kernel)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    blob = cv2.morphologyEx(blob, cv2.MORPH_DILATE, kernel)
 
-    # Find contours in image 
-    contours, hierarchy = cv2.findContours(blob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    
+    # Find contours in new image
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+
+    # contours 
     # sort contours by area
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
-
-    # Fit ellipse to largest contour 
-    #ellipse = cv2.fitEllipse(contours[0])
-    #return ellipse
-
-
-    new_img = np.ones_like(grey)*255
     
-    for contour in contours:
-        # draw contour on image
-        cv2.drawContours(new_img, [contour], 0, (0,255,0), 2)
-        # fit min enclosing ellipse to contour
-        ellipsis = cv2.fitEllipse(contour)
-        #check area of ellipse
-        are_ellipse = np.pi*ellipsis[1][0]*ellipsis[1][1]
-        if are_ellipse < img.shape[0]*img.shape[1]:
-            cv2.ellipse(new_img, ellipsis, (0,255,0), 2)
-        #circle = cv2.minEnclosingCircle(contour)
-        #cv2.circle(new_img, (int(circle[0][0]), int(circle[0][1])), int(circle[1]), (0,255,0), 2)
-        #square = cv2.minAreaRect(contour)        
-        #box = cv2.boxPoints(square)
-        
+    
+    contour = contours[0]
 
-    # show new image
-    #cv2.imshow("new image", new_img)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
-    
-    new_img = 255-new_img
-    # Inflate new image 
-    kernel = np.ones((3,3),np.uint8)
-    new_img = cv2.dilate(new_img,kernel,iterations = 1)
-    
-    # Find contours in new image
-    contours, hierarchy = cv2.findContours(new_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    
-    # Remove contours with area bigger than half of the image
-    contours = [contour for contour in contours if cv2.contourArea(contour) < img.shape[0]*img.shape[1]/3]
-        
-    # Sort contours by area
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
-    # draw contours on image
-    #cv2.drawContours(img, contours, -1, (0,255,0), 2)
 
-    # Get the largest contour
-    largest_contour = contours[0]
-    
     # Fit ellipse to largest contour
-    ellipsis = cv2.fitEllipse(largest_contour)
-    ##draw ellipse on image
-    #cv2.ellipse(img, ellipsis, (0,255,0), 2)    
-    ## Fit rectangle to largest contour
-    #
-    #
-    ## plot new edges
-    #cv2.imshow("new edges", new_img)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
-
+    ellipsis = cv2.fitEllipse(contour)
     return ellipsis
 
 def find_boundary_polygon(convex_hulls):
@@ -377,7 +288,6 @@ def find_boundary_polygon(convex_hulls):
 
     # Sort the boundary vertices in clockwise order (assuming 2D points)
     boundary_vertices.sort(key= lambda v: (np.arctan2(v[1], v[0]), v[0]**2 + v[1]**2))
-
     return boundary_vertices
 
 # Function to take a picture from the camera
