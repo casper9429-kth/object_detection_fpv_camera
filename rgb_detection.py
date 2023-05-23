@@ -235,8 +235,30 @@ def find_object_morph_pre_filter(image):
     # get largest contour
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
     
-    # find polygon that contains all contours
+    # Transform contours to polygons
+    contours = [cv2.approxPolyDP(contour, 0.01*cv2.arcLength(contour, True), True) for contour in contours]
     
+    # Get convex hull of contours
+    contours = [cv2.convexHull(contour) for contour in contours]
+
+    # convex hulls to polygons
+    polygons = [(contour.reshape(-1,2)) for contour in contours]
+    # transform to list of tuples
+    polygons = [tuple(map(tuple, polygon)) for polygon in polygons]
+    master_polygon = find_boundary_polygon(polygons)
+    # visualize master polygon on image
+    cv2.polylines(image, [np.array(master_polygon)], True, (0,255,0), 2)
+    cv2.imshow("mask", image)
+    cv2.waitKey(0)
+
+    # Create master polygon that contains all convex hulls
+    #master_polygon = np.concatenate(contours)
+    
+    # Create mask from convex hulls
+    mask = np.zeros_like(image)
+    cv2.imshow("mask", mask)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     # fit ellipse to all contours and draw them in new image
     new_img = np.ones_like(mask)*255
@@ -343,6 +365,20 @@ def find_object_morph_pre_filter(image):
 
     return ellipsis
 
+def find_boundary_polygon(convex_hulls):
+    boundary_vertices = []
+
+    for convex_hull in convex_hulls:
+        for vertex in convex_hull:
+            if vertex not in boundary_vertices:
+                boundary_vertices.append(vertex)
+            else:
+                boundary_vertices.remove(vertex)
+
+    # Sort the boundary vertices in clockwise order (assuming 2D points)
+    boundary_vertices.sort(key= lambda v: (np.arctan2(v[1], v[0]), v[0]**2 + v[1]**2))
+
+    return boundary_vertices
 
 # Function to take a picture from the camera
 def find_object_morph_pre_filter_old(image):
