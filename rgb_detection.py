@@ -56,12 +56,12 @@ def test():
     images = [cv2.imread(file_path) for file_path in file_paths]
     # Find ellipses for all images
     for image in images:
-        ellipse_morph = find_object_morph(image)
-        ellipse_derivatives = find_object_derivatives(image)
-        ellipsis_rembg = find_object_rembg(image)
+        ellipse_morph = find_object_morph_pre_filter(image)
+        #ellipse_derivatives = find_object_derivatives(image)
+        #ellipsis_rembg = find_object_rembg(image)
         cv2.ellipse(image, ellipse_morph, (0,0,255), 2)    
-        cv2.ellipse(image, ellipse_derivatives, (255,0,0), 2)
-        cv2.ellipse(image, ellipsis_rembg, (0,255,0), 2)
+        #cv2.ellipse(image, ellipse_derivatives, (255,0,0), 2)
+        #cv2.ellipse(image, ellipsis_rembg, (0,255,0), 2)
         # plot new edges
         cv2.imshow("new edges", image)
         cv2.waitKey(0)
@@ -164,6 +164,124 @@ def find_object_morph(image):
 
     return ellipsis
 
+# Function to take a picture from the camera
+def find_object_morph_pre_filter(image):
+    """
+    Find object using morphological operations
+    """
+    # Pre-filter image
+    # Transform image to HSV
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # Define lower and upper bounds for color
+    #lower = np.array([0, 3, 50])
+    #upper = np.array([179, 39, 185])
+    lower = np.array([0, 3, 50])
+    upper = np.array([179, 39, 185])
+
+
+    # Remove all pixels that are not in the color range
+    mask = cv2.inRange(hsv, lower, upper)
+    mask = cv2.bitwise_not(mask)
+
+    # erode mask
+    #kernel = np.ones((12,12),np.uint8)
+    #mask = cv2.erode(mask,kernel,iterations = 1)
+
+    # 
+
+    
+
+    # show mask
+    cv2.imshow("mask", mask)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # save mask
+    img = image.copy()
+    #grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
+    #grey = cv2.bitwise_and(grey, grey, mask=mask)
+    grey = mask
+
+    # Gaussian blur
+    grey = cv2.GaussianBlur(grey, (3,3), 0)
+    # Threshold image using adaptive thresholding
+    #thresh = cv2.adaptiveThreshold(grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    thresh = cv2.adaptiveThreshold(grey, 255, cv2.BORDER_REPLICATE, cv2.THRESH_BINARY, 69, 5)
+    
+    # Morphological operation
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13,13))
+    blob = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15,15))
+    blob = cv2.morphologyEx(blob, cv2.MORPH_CLOSE, kernel)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+    blob = cv2.morphologyEx(blob, cv2.MORPH_DILATE, kernel)
+
+    # Find contours in image 
+    contours, hierarchy = cv2.findContours(blob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    
+    # sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+    # Fit ellipse to largest contour 
+    #ellipse = cv2.fitEllipse(contours[0])
+    #return ellipse
+
+
+    new_img = np.ones_like(grey)*255
+    
+    for contour in contours:
+        # draw contour on image
+        cv2.drawContours(new_img, [contour], 0, (0,255,0), 2)
+        # fit min enclosing ellipse to contour
+        ellipsis = cv2.fitEllipse(contour)
+        #check area of ellipse
+        are_ellipse = np.pi*ellipsis[1][0]*ellipsis[1][1]
+        if are_ellipse < img.shape[0]*img.shape[1]:
+            cv2.ellipse(new_img, ellipsis, (0,255,0), 2)
+        #circle = cv2.minEnclosingCircle(contour)
+        #cv2.circle(new_img, (int(circle[0][0]), int(circle[0][1])), int(circle[1]), (0,255,0), 2)
+        #square = cv2.minAreaRect(contour)        
+        #box = cv2.boxPoints(square)
+        
+
+    # show new image
+    #cv2.imshow("new image", new_img)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
+    
+    new_img = 255-new_img
+    # Inflate new image 
+    kernel = np.ones((3,3),np.uint8)
+    new_img = cv2.dilate(new_img,kernel,iterations = 1)
+    
+    # Find contours in new image
+    contours, hierarchy = cv2.findContours(new_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    
+    # Remove contours with area bigger than half of the image
+    contours = [contour for contour in contours if cv2.contourArea(contour) < img.shape[0]*img.shape[1]/3]
+        
+    # Sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+    # draw contours on image
+    #cv2.drawContours(img, contours, -1, (0,255,0), 2)
+
+    # Get the largest contour
+    largest_contour = contours[0]
+    
+    # Fit ellipse to largest contour
+    ellipsis = cv2.fitEllipse(largest_contour)
+    ##draw ellipse on image
+    #cv2.ellipse(img, ellipsis, (0,255,0), 2)    
+    ## Fit rectangle to largest contour
+    #
+    #
+    ## plot new edges
+    #cv2.imshow("new edges", new_img)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
+
+    return ellipsis
 
 
 def find_object_rembg(image):
@@ -337,4 +455,5 @@ def take_picture(camera_device="/dev/video0",debug=False):
 
 if __name__ == '__main__':
     #main()
-    test_nitristic()
+    #test_nitristic()
+    test()
