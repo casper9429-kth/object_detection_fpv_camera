@@ -1,6 +1,8 @@
 import numpy as np
 import cv2 # OpenCV
 import random as rn
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 def main():
     frame = take_picture("/dev/video0",debug=False)
@@ -55,16 +57,22 @@ def test():
     images = [cv2.imread(file_path) for file_path in file_paths]
     # Find ellipses for all images
     for image in images:
-        ellipse_morph = find_object_morph_pre_filter(image)
+        #ellipse_morph = find_object_morph_pre_filter(image)
         #ellipse_derivatives = find_object_derivatives(image)
         #ellipsis_rembg = find_object_rembg(image)
-        cv2.ellipse(image, ellipse_morph, (0,0,255), 2)    
+        #cv2.ellipse(image, ellipse_morph, (0,0,255), 2)    
         #cv2.ellipse(image, ellipse_derivatives, (255,0,0), 2)
         #cv2.ellipse(image, ellipsis_rembg, (0,255,0), 2)
         # plot new edges
-        cv2.imshow("new edges", image)
-        cv2.waitKey(0)
-    cv2.destroyAllWindows()
+        #cv2.imshow("new edges", image)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        
+        #plot_colour_space(image)
+        
+        filter_image(image)
+        
+    
     
     pass
 
@@ -79,9 +87,96 @@ def find_files(folder_path):
             files.append(file)
     return files
 
+def plot_colour_space(image):
+    """
+    Plot the colour space of the image
+    """
+    # Flatten the image array
+    
+    # downsample the image
+    image = cv2.pyrDown(image)
+    image = cv2.pyrDown(image)
+    
+    flatten = image.reshape((-1,3))
 
+    # Convert image to HSV
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-# Function to take a picture from the camera
+    # Extract H, S, V channels
+    h = hsv[:,:,0].flatten()
+    s = hsv[:,:,1].flatten()
+    v = hsv[:,:,2].flatten()
+
+    # Create a 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Scatter plot the points with colors
+    ax.scatter(h, s, v, c=flatten/255.0)
+
+    # Set axis labels
+    ax.set_xlabel('Hue')
+    ax.set_ylabel('Saturation')
+    ax.set_zlabel('Value')
+
+    # Show the plot
+    plt.show()
+    
+
+def filter_image(image):
+    # to HSV
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+    image_orig = image.copy()
+    image = image.copy()
+    image = image/255.0 
+    image = image -0.5
+    
+    
+    
+    # Calc covariance matrix of image
+    cov = np.cov(image.reshape(-1,3).T)
+    # Multiply covT with cov
+    cov = np.matmul(cov.T, cov)
+    # Find eigenvalues and eigenvectors
+    eigvals, eigvecs = np.linalg.eig(cov)
+    # Normalize eigenvectors
+    eigvecs = eigvecs/np.linalg.norm(eigvecs, axis=0)
+    # transform image to new basis
+    eigvecs_inv = np.linalg.inv(eigvecs)
+    image = np.einsum('ij,xyj->xyi', eigvecs_inv,image)
+    # make biggest element in each pixel 1 and smallest 0
+    # mask = np.zeros_like(image)
+    # mask_1 = (image[:,:,0] > image[:,:,1]) & (image[:,:,0] > image[:,:,2])
+    # mask_2 = (image[:,:,1] > image[:,:,0]) & (image[:,:,1] > image[:,:,2])
+    # mask_3 = (image[:,:,2] > image[:,:,0]) & (image[:,:,2] > image[:,:,1])
+    # image[mask_1,0] = 1
+    # image[mask_1,1] = 0
+    # image[mask_1,2] = 0
+    # image[mask_2,0] = 0
+    # image[mask_2,1] = 1
+    # image[mask_2,2] = 0
+    # image[mask_3,0] = 0
+    # image[mask_3,1] = 0
+    # image[mask_3,2] = 1
+
+    # normalize image to 0-1
+    image = image - np.min(image)
+    image = image/np.max(image)
+    image = image*255.0
+    image = image.astype(np.uint8)
+
+    # adaoptive thresholding
+    image = cv2.adaptiveThreshold(image[:,:,0], 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+    cv2.imshow("image", image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    
+    
+
+    # Function to take a picture from the camera
 def find_object_morph(image):
     """
     Find object using morphological operations
